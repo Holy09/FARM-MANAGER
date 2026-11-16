@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Farm Manager</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#173126;background:#f3f7f3}*{box-sizing:border-box}
+body{margin:0}header{background:#14532d;color:white;padding:22px max(20px,calc((100vw - 1050px)/2))}header h1{margin:0}header p{margin:6px 0 0;color:#d6eadc}
+main{max-width:1050px;margin:24px auto;padding:0 16px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px}
+section{background:white;border:1px solid #dce6de;border-radius:14px;padding:20px;margin-bottom:16px}h2{margin:0 0 16px;font-size:1.15rem}
+label{display:block;font-size:.9rem;font-weight:600;margin:10px 0 5px}input,select,textarea,button{font:inherit;width:100%;padding:10px;border-radius:8px;border:1px solid #b9cbbd}
+button{background:#166534;color:white;border:0;cursor:pointer;margin-top:14px;font-weight:650}button:hover{background:#14532d}
+button:disabled{opacity:.5;cursor:not-allowed}.muted{color:#52665b}.notice{padding:12px;border-radius:8px;background:#e6f4ea;margin:0 0 16px}
+.error{background:#fde8e8;color:#8b2020}.stat{font-size:2rem;font-weight:750;color:#166534}
+table{width:100%;border-collapse:collapse;font-size:.9rem}th,td{text-align:left;padding:10px;border-bottom:1px solid #e4ebe5}th{background:#f5f8f5}
+.scroll{overflow-x:auto}small{color:#64776a}
+</style></head><body><header><h1>🌱 Farm Manager</h1><p>Multi-farm livestock management • Uganda</p></header>
+<main><p id="message" class="notice" role="status">Loading farms…</p>
+<section><h2>Choose farm</h2><label for="farm">Active farm</label><select id="farm"></select><small>Every animal and housing record belongs to the selected farm.</small></section>
+<div class="grid"><section><h2>Add farm</h2><form id="farmForm"><label>Farm name<input name="name" maxlength="120" required></label><label>Location<input name="location" maxlength="200" placeholder="District, Uganda"></label><button>Add farm</button></form></section>
+<section><h2>Farm overview</h2><div class="stat" id="total">0</div><p class="muted">Active animals / birds / fish</p><div id="breakdown"></div></section></div>
+<div class="grid"><section><h2>Add housing / stable / pond</h2><form id="housingForm"><label>Name<input name="name" maxlength="120" placeholder="Stable A" required></label><label>Species<select name="species" class="species"></select></label><label>Capacity<input name="capacity" type="number" min="1" step="1" required></label><button>Add housing</button></form></section>
+<section><h2>Register animal or batch</h2><form id="animalForm"><label>Tag or batch code<input name="tag" maxlength="120" placeholder="PIG-001" required></label><label>Species<select name="species" class="species" id="animalSpecies"></select></label><label>Sex<select name="sex"><option value="unknown">Unknown</option><option value="female">Female</option><option value="male">Male</option><option value="mixed">Mixed batch</option></select></label><label>Quantity<input name="quantity" type="number" min="1" step="1" value="1" required></label><label>Weight (kg, optional)<input name="weight_kg" type="number" min="0" step="0.001"></label><label>Birth date (optional)<input name="birth_date" type="date"></label><label>Housing<select name="housing_id" id="animalHousing"><option value="">Unassigned</option></select></label><label>Notes<textarea name="notes" maxlength="1000" rows="2"></textarea></label><button>Register</button></form></section></div>
+<section><h2>Registered animals and batches</h2><div class="scroll"><table><thead><tr><th>Tag</th><th>Species</th><th>Quantity</th><th>Sex</th><th>Housing</th><th>Status</th></tr></thead><tbody id="animals"></tbody></table></div></section>
+</main><script>
+const $ = id => document.getElementById(id);
+const species = ['pig','cattle','goat','sheep','chicken','fish','horse','donkey','rabbit'];
+let housing = [];
+function notify(message, error=false){$('message').textContent=message;$('message').className='notice'+(error?' error':'');}
+async function api(path, options={}){const r=await fetch('/api'+path,{...options,headers:{'Content-Type':'application/json',...options.headers}});const body=await r.json();if(!r.ok)throw new Error(body.error||'Request failed');return body;}
+const escapeHtml = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const farmId = () => $('farm').value;
+async function refreshFarms(selected){
+ const farms=await api('/farms');$('farm').innerHTML=farms.map(f=>'<option value="'+f.id+'">'+escapeHtml(f.name)+' — '+escapeHtml(f.location)+'</option>').join('');
+ if(selected)$('farm').value=String(selected);
+ await refresh();
+}
+async function refresh(){
+ const id=farmId();if(!id){$('total').textContent='0';$('breakdown').textContent='Add a farm to begin.';$('animals').innerHTML='';housing=[];renderHousing();return;}
+ const [summary,houses,animals]=await Promise.all([api('/farms/'+id+'/summary'),api('/farms/'+id+'/housing'),api('/farms/'+id+'/animals')]);
+ housing=houses;renderHousing();$('total').textContent=summary.total_active;
+ $('breakdown').textContent=summary.species.map(x=>x.species+': '+x.active_count).join(' • ')||'No animals registered yet.';
+ $('animals').innerHTML=animals.map(a=>'<tr><td>'+escapeHtml(a.tag)+'</td><td>'+escapeHtml(a.species)+'</td><td>'+a.quantity+'</td><td>'+escapeHtml(a.sex)+'</td><td>'+escapeHtml(a.housing_name||'Unassigned')+'</td><td>'+escapeHtml(a.status)+'</td></tr>').join('')||'<tr><td colspan="6">No animals yet.</td></tr>';
+}
+function renderHousing(){
+ const selected=$('animalHousing').value;
+ const chosen=$('animalSpecies').value;
+ $('animalHousing').innerHTML='<option value="">Unassigned</option>'+housing.filter(h=>h.species===chosen).map(h=>'<option value="'+h.id+'">'+escapeHtml(h.name)+' (capacity '+h.capacity+')</option>').join('');
+ $('animalHousing').value=selected;
+}
+async function submit(form, url, after){
+ const data=Object.fromEntries(new FormData(form).entries());
+ for(const k of ['housing_id','weight_kg','birth_date'])if(data[k]==='')delete data[k];
+ try{const created=await api(url,{method:'POST',body:JSON.stringify(data)});form.reset();notify('Saved successfully.');await after(created);}catch(e){notify(e.message,true);}
+}
+document.querySelectorAll('.species').forEach(el=>el.innerHTML=species.map(s=>'<option value="'+s+'">'+s[0].toUpperCase()+s.slice(1)+'</option>').join(''));
+$('farm').addEventListener('change',()=>refresh().catch(e=>notify(e.message,true)));
+$('animalSpecies').addEventListener('change',renderHousing);
+$('farmForm').addEventListener('submit',e=>{e.preventDefault();submit(e.target,'/farms',created=>refreshFarms(created.id));});
+$('housingForm').addEventListener('submit',e=>{e.preventDefault();if(!farmId())return notify('Add a farm first.',true);submit(e.target,'/farms/'+farmId()+'/housing',refresh);});
+$('animalForm').addEventListener('submit',e=>{e.preventDefault();if(!farmId())return notify('Add a farm first.',true);submit(e.target,'/farms/'+farmId()+'/animals',refresh);});
+refreshFarms().then(()=>notify('Ready. Select a farm or create your first farm.')).catch(e=>notify('Cannot connect to backend: '+e.message,true));
+</script></body></html>
