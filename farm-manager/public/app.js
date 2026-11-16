@@ -1,0 +1,16 @@
+const $=id=>document.getElementById(id);
+const species=['pig','cattle','goat','sheep','chicken','fish','horse','donkey','rabbit'];
+const msg=t=>$('message').textContent=t;
+let farmId='';
+function option(select,value,label){const o=document.createElement('option');o.value=value;o.textContent=label;select.append(o);}
+async function api(path,options){const r=await fetch('/api'+path,{...options,headers:{'Content-Type':'application/json',...(options?.headers||{})}});const data=await r.json();if(!r.ok)throw Error(data.error||'Request failed');return data;}
+async function farms(){const items=await api('/farms');$('farmSelect').replaceChildren();option($('farmSelect'),'','Choose a farm');items.forEach(f=>option($('farmSelect'),f.id,f.name+(f.location?' — '+f.location:'')));if(items.some(f=>String(f.id)===String(farmId)))$('farmSelect').value=farmId;else farmId=items[0]?.id||'';$('farmSelect').value=farmId;await refresh();}
+function table(rows,cols){const t=document.createElement('table');const head=document.createElement('tr');cols.forEach(c=>{const th=document.createElement('th');th.textContent=c[0];head.append(th)});t.append(head);rows.forEach(row=>{const tr=document.createElement('tr');cols.forEach(c=>{const td=document.createElement('td');td.textContent=row[c[1]]??'';tr.append(td)});t.append(tr)});return t;}
+async function refresh(){for(const id of ['housingList','animalList','summary'])$(id).replaceChildren();$('housingSelect').replaceChildren();option($('housingSelect'),'','No housing');if(!farmId)return;const [housing,animals,summary]=await Promise.all([api('/farms/'+farmId+'/housing'),api('/farms/'+farmId+'/animals'),api('/farms/'+farmId+'/summary')]);housing.forEach(h=>option($('housingSelect'),h.id,h.name+' (capacity '+h.capacity+')'));$('housingList').append(table(housing,[['Name','name'],['Capacity','capacity']]));$('animalList').append(table(animals,[['Tag / batch','tag'],['Species','species'],['Quantity','quantity'],['Housing','housing_name'],['Status','status']]));$('summary').append(table(summary,[['Species','species'],['Count','count']]));}
+async function submit(id,fn){$(id).addEventListener('submit',async e=>{e.preventDefault();try{await fn(new FormData(e.target));e.target.reset();msg('Saved successfully');await farms();}catch(err){msg(err.message)}});}
+species.forEach(s=>option($('species'),s,s[0].toUpperCase()+s.slice(1)));
+$('farmSelect').addEventListener('change',async e=>{farmId=e.target.value;try{await refresh()}catch(err){msg(err.message)}});
+submit('farmForm',async d=>{const f=await api('/farms',{method:'POST',body:JSON.stringify({name:d.get('name'),location:d.get('location')})});farmId=f.id});
+submit('housingForm',async d=>{if(!farmId)throw Error('Create a farm first');await api('/farms/'+farmId+'/housing',{method:'POST',body:JSON.stringify({name:d.get('name'),capacity:Number(d.get('capacity'))})})});
+submit('animalForm',async d=>{if(!farmId)throw Error('Create a farm first');await api('/farms/'+farmId+'/animals',{method:'POST',body:JSON.stringify({species:d.get('species'),tag:d.get('tag'),quantity:Number(d.get('quantity')),sex:d.get('sex'),housing_id:d.get('housing_id')||null})})});
+farms().catch(err=>msg('Connection error: '+err.message));
