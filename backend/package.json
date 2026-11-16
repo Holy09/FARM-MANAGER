@@ -1,0 +1,20 @@
+{
+  "name": "farm-manager-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multi-farm management MVP for Uganda",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
+  }
+}
