@@ -3,7 +3,7 @@ const express = require('express');
 const { Pool } = require('pg');
 const path = require('node:path');
 const app = express();
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: true } : false });
+const pool = new Pool({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 5000, ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: true } : false });
 const species = ['pig','cattle','goat','sheep','chicken','fish','horse','donkey','rabbit'];
 app.use(express.json({ limit: '100kb' }));
 app.use(express.static(path.join(__dirname, '../public')));
@@ -68,4 +68,20 @@ app.use((err,req,res,next)=>{
   console.error(err);res.status(500).json({error:'Unexpected server error'});
 });
 const port=Number(process.env.PORT)||3000;
-app.listen(port,()=>console.log('Farm Manager running at http://localhost:'+port));
+(async () => {
+  if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes('YOUR_PASSWORD')) {
+    console.error('Set a valid DATABASE_URL in your .env file before starting Farm Manager.');
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    await pool.query('SELECT 1');
+    app.listen(port, '127.0.0.1', () => console.log('Farm Manager running at http://localhost:'+port));
+  } catch (error) {
+    const causes=error.errors?.length ? error.errors : [error];
+    console.error('PostgreSQL connection failed:', causes.map(e=>[e.code,e.message||String(e)].filter(Boolean).join(': ')).join(' | '));
+    console.error('Check PostgreSQL service, database name, port and .env credentials.');
+    process.exitCode=1;
+    await pool.end();
+  }
+})();
