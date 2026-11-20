@@ -8,7 +8,7 @@ const species = ['pig','cattle','goat','sheep','chicken','fish','horse','donkey'
 app.use(express.json({ limit: '100kb' }));
 app.use(express.static(path.join(__dirname, '../public')));
 const asyncRoute = fn => (req,res,next) => Promise.resolve(fn(req,res,next)).catch(next);
-const positiveId = v => /^\d+$/.test(String(v)) && Number(v) > 0;
+const positiveId = v => /^\d+$/.test(String(v)) && Number.isSafeInteger(Number(v)) && Number(v) > 0;
 const bad = (res,message) => res.status(400).json({error:message});
 app.get('/api/health', asyncRoute(async (req,res) => { await pool.query('SELECT 1'); res.json({status:'ok', database:'connected'}); }));
 app.get('/api/species', (req,res) => res.json(species));
@@ -42,7 +42,7 @@ app.post('/api/farms/:farmId/animals', asyncRoute(async (req,res) => {
   const {species:kind,tag,quantity=1,sex='unknown',housing_id=null,birth_date=null}=req.body;
   if(!species.includes(kind) || typeof tag!=='string' || !tag.trim() || tag.length>100 || !Number.isSafeInteger(quantity) || quantity<1 || !['male','female','mixed','unknown'].includes(sex)) return bad(res,'Invalid animal details');
   if(housing_id!==null && !positiveId(housing_id)) return bad(res,'Invalid housing ID');
-  if(birth_date!==null && (typeof birth_date!=='string' || !/^\d{4}-\d{2}-\d{2}$/.test(birth_date) || Number.isNaN(Date.parse(birth_date)))) return bad(res,'Birth date must be YYYY-MM-DD');
+  if(birth_date!==null && (typeof birth_date!=='string' || !/^\d{4}-\d{2}-\d{2}$/.test(birth_date) || (Number.isNaN(Date.parse(birth_date)) || new Date(birth_date).toISOString().slice(0,10)!==birth_date))) return bad(res,'Birth date must be YYYY-MM-DD');
   const client=await pool.connect();
   try {
     await client.query('BEGIN');
