@@ -1,9 +1,34 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Farm Manager</title>
-<style>body{font-family:system-ui,Arial;background:#f4f7f4;color:#17321f;margin:0}header{background:#1d5936;color:white;padding:22px}main{max-width:1000px;margin:auto;padding:22px}section{background:white;border:1px solid #dce5dc;border-radius:12px;padding:20px;margin:16px 0}form{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}input,select,button{padding:11px;border:1px solid #aabdab;border-radius:7px;font:inherit}button{background:#1d5936;color:white;cursor:pointer}table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #ddd;text-align:left;padding:9px}#message{min-height:24px}h1{margin:0}small{opacity:.8}</style></head>
-<body><header><h1>🌱 Farm Manager</h1><small>Multi-farm livestock management • Phase 1</small></header><main>
-<p id="message" role="status"></p>
-<section><h2>Your farms</h2><form id="farmForm"><input name="name" placeholder="Farm name" required maxlength="120"><input name="location" placeholder="Location"><button>Add farm</button></form><label>Current farm <select id="farmSelect"></select></label></section>
-<section><h2>Housing</h2><form id="housingForm"><input name="name" placeholder="Stable / pond / house" required><input name="capacity" type="number" min="0" placeholder="Capacity" required><button>Add housing</button></form><div id="housingList"></div></section>
-<section><h2>Register animals</h2><form id="animalForm"><select name="species" id="species"></select><input name="tag" placeholder="Animal tag or batch ID" required><input name="quantity" type="number" min="1" value="1" required><select name="sex"><option value="unknown">Unknown</option><option value="female">Female</option><option value="male">Male</option><option value="mixed">Mixed batch</option></select><select name="housing_id" id="housingSelect"><option value="">No housing</option></select><button>Register</button></form><h3>Animals</h3><div id="animalList"></div><h3>Active animals by species</h3><div id="summary"></div></section>
-</main><script src="/app.js"></script></body></html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#075a35"><title>Farm Manager · Uganda</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="top"><div class="top-inner"><div class="brand"><span class="brand-icon">🌿</span><div><strong>Farm Manager</strong><small>Livestock management • Uganda</small></div></div><span class="phase">PHASE 1</span></div></header>
+<main class="shell">
+<div id="message" role="status" aria-live="polite"></div>
+<section class="farm-switch card"><div><span class="eyebrow">CURRENT FARM</span><label for="farmSelect" class="sr-only">Select farm</label><select id="farmSelect"><option value="">Choose a farm</option></select></div><button type="button" class="secondary" id="addFarmBtn">+ Add farm</button></section>
+<section id="homeView" class="view active" aria-label="Dashboard">
+<div class="welcome"><div><span class="eyebrow">FARM OVERVIEW</span><h1>Welcome to Farm Manager</h1><p>Manage your livestock, housing and animal records in one place.</p></div><span class="hero-emoji">🐄</span></div>
+<h2>Quick actions</h2><div class="quick-grid"><button data-view="registerView" class="quick"><span>➕</span>Register animal</button><button data-view="housingView" class="quick"><span>🏠</span>Manage housing</button><button data-view="farmsView" class="quick"><span>🌾</span>Manage farms</button><button data-view="animalsView" class="quick"><span>🐾</span>Animal records</button></div>
+<div class="section-heading"><h2>My livestock</h2><span id="totalCount">0 animals</span></div><div id="speciesGrid" class="species-grid"></div>
+<div class="card notice"><strong>Coming next</strong><p>Feeding, veterinary records, sales and reports are planned for later phases. This dashboard shows real records from your database.</p></div>
+</section>
+<section id="registerView" class="view" aria-label="Register animals"><div class="view-head"><h1>Register animal</h1><p>Add an individual animal or a batch to the selected farm.</p></div><div class="card">
+<form id="animalForm" class="form-grid">
+<label>Species <span>*</span><select id="species" name="species" required></select></label>
+<label>Tag or batch ID <span>*</span><input name="tag" placeholder="e.g. P-004" maxlength="100" required></label>
+<label>Quantity <span>*</span><input name="quantity" type="number" min="1" step="1" value="1" required></label>
+<label>Sex <select name="sex"><option value="unknown">Unknown</option><option value="female">Female</option><option value="male">Male</option><option value="mixed">Mixed batch</option></select></label>
+<label>Birth date <input name="birth_date" type="date"></label>
+<label>Housing <select name="housing_id" id="housingSelect"><option value="">No housing assigned</option></select></label>
+<button class="primary full" type="submit">Save animal</button></form></div></section>
+<section id="animalsView" class="view" aria-label="Animal records"><div class="view-head"><h1>Animal records</h1><p>Animals and batches registered to the selected farm.</p></div><div id="animalList" class="record-list"></div></section>
+<section id="housingView" class="view" aria-label="Housing"><div class="view-head"><h1>Housing & capacity</h1><p>Create pens, stables, chicken houses and ponds.</p></div><div class="card"><form id="housingForm" class="form-grid"><label>Housing name <span>*</span><input name="name" maxlength="120" placeholder="e.g. Pig House A" required></label><label>Maximum capacity <span>*</span><input name="capacity" type="number" min="0" step="1" required></label><button type="submit" class="primary full">Add housing</button></form></div><div id="housingList" class="record-list"></div></section>
+<section id="farmsView" class="view" aria-label="Farms"><div class="view-head"><h1>Manage farms</h1><p>Create a farm to start recording livestock.</p></div><div class="card"><form id="farmForm" class="form-grid"><label>Farm name <span>*</span><input name="name" maxlength="120" placeholder="e.g. Rwengoma Farm" required></label><label>Location <input name="location" placeholder="District, Uganda"></label><button type="submit" class="primary full">Create farm</button></form></div><div id="farmList" class="record-list"></div></section>
+</main>
+<nav class="bottom-nav" aria-label="Main navigation"><button class="nav active" data-view="homeView"><span>⌂</span>Home</button><button class="nav" data-view="animalsView"><span>🐾</span>Animals</button><button class="nav" data-view="registerView"><span>＋</span>Register</button><button class="nav" data-view="housingView"><span>🏠</span>Housing</button><button class="nav" data-view="farmsView"><span>🌾</span>Farms</button></nav>
+<script src="/app.js"></script>
+</body></html>
